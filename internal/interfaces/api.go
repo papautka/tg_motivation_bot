@@ -8,3 +8,7 @@ type Quote struct {
 type QuoteProvider interface {
 	GetQuote() (*Quote, error)
 }
+
+type Translator interface {
+	Translate(quote *Quote, fromLang, toLang string) (*Quote, error)
+}

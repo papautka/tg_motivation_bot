@@ -26,4 +26,15 @@ func app() {
 		fmt.Printf("%+v\n", err)
 	}
 	fmt.Printf("%+v\n", quote)
+
+	// 3. Переводим цитату
+	trAdapter := adapters.NewTranslateAdapter(cfg.TranslateAPIURL)
+	translateFetcher := usecases.NewTranslateFetcher(trAdapter)
+
+	translateQuote, err := translateFetcher.FetchTranslated(quote, "en", "ru")
+	if err != nil {
+		fmt.Println("Ошибка при переводе цитаты:", err)
+		fmt.Printf("%+v\n", err)
+	}
+	fmt.Printf("%+v\n", translateQuote)
 }
