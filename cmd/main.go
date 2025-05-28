@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"tg_motivation_bot/internal/adapters"
 	"tg_motivation_bot/internal/config"
+	"tg_motivation_bot/internal/usecases"
 )
 
 func main() {
@@ -13,4 +15,15 @@ func app() {
 	// 1. Подгружаем Config
 	cfg := config.NewConfig()
 	fmt.Printf("%+v\n", cfg)
+
+	// 2. Получаем цитату и автора
+	zenAdapter := adapters.NewZenQuotesAdapter(cfg.QuoteAPIURL)
+	quoteFetcher := usecases.NewQuoteFetcher(zenAdapter)
+
+	quote, err := quoteFetcher.FetchFormattedQuote()
+	if err != nil {
+		fmt.Println("Ошибка при получении цитаты:", err)
+		fmt.Printf("%+v\n", err)
+	}
+	fmt.Printf("%+v\n", quote)
 }
