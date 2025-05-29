@@ -37,4 +37,16 @@ func app() {
 		fmt.Printf("%+v\n", err)
 	}
 	fmt.Printf("%+v\n", translateQuote)
+
+	// 4. Отправим данные в TelegramBot
+	tgAdapter, err := adapters.NewTelegramAdapter(cfg.TelegramToken)
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+	}
+	tgFetcher := usecases.NewTelegramFetcher(tgAdapter)
+
+	formatted := usecases.FormatQuoteWithEmoji(translateQuote.Text, translateQuote.Author)
+	sendMsgError := tgFetcher.FetchTelegram(cfg.TelegramChatId, formatted)
+	fmt.Printf("%+v\n", sendMsgError)
+
 }

@@ -4,11 +4,12 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"strconv"
 )
 
 type Config struct {
 	TelegramToken   string
-	TelegramChatId  string
+	TelegramChatId  int
 	QuoteAPIURL     string
 	TranslateAPIURL string
 }
@@ -18,9 +19,10 @@ func NewConfig() *Config {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+	tgChatId, _ := strconv.Atoi(os.Getenv("TELEGRAM_CHAT_ID"))
 	return &Config{
 		TelegramToken:   os.Getenv("TELEGRAM_TOKEN"),
-		TelegramChatId:  os.Getenv("TELEGRAM_CHAT_ID"),
+		TelegramChatId:  tgChatId,
 		QuoteAPIURL:     os.Getenv("QUOTE_API_URL"),
 		TranslateAPIURL: os.Getenv("TRANSLATE_API_URL"),
 	}

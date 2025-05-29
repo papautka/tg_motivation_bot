@@ -19,3 +19,7 @@ func (qf *QuoteFetcher) FetchFormattedQuote() (*interfaces.Quote, error) {
 	}
 	return quote, nil
 }
+
+func FormatQuoteWithEmoji(text, author string) string {
+	return "💬 \"" + text + "\"\n🖊️ — " + author
+}

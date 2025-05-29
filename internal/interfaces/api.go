@@ -12,3 +12,7 @@ type QuoteProvider interface {
 type Translator interface {
 	Translate(quote *Quote, fromLang, toLang string) (*Quote, error)
 }
+
+type TelegramApi interface {
+	SendMessage(chatId int, message string) error
+}
