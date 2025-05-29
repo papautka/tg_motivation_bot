@@ -18,7 +18,8 @@ COPY . .
 # CGO_ENABLED=0 — отключаем C-биндинги для статической сборки
 # GOOS=linux — указываем целевую платформу
 # Сборка бинарника с именем `bot` из директории `cmd`
-RUN CGO_ENABLED=0 GOOS=linux go build -o bot ./cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -x -o bot ./cmd
+
 
 # Финальный образ (production stage)
 # Используем минимальный образ Alpine без Golang
