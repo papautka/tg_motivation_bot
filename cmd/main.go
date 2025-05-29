@@ -1,9 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
+	"os"
 	"tg_motivation_bot/internal/adapters"
 	"tg_motivation_bot/internal/config"
+	"tg_motivation_bot/internal/sheduler"
 	"tg_motivation_bot/internal/usecases"
 )
 
@@ -12,41 +14,55 @@ func main() {
 }
 
 func app() {
+	// 0. Создаем logger устанавливая его в slog
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	// 1. Подгружаем Config
 	cfg := config.NewConfig()
-	fmt.Printf("%+v\n", cfg)
 
-	// 2. Получаем цитату и автора
-	zenAdapter := adapters.NewZenQuotesAdapter(cfg.QuoteAPIURL)
-	quoteFetcher := usecases.NewQuoteFetcher(zenAdapter)
+	// 2. Подключаем adapter
+	getQuoteAd := adapters.NewZenQuotesAdapter(cfg.QuoteAPIURL)
+	translateQuoteAd := adapters.NewTranslateAdapter(cfg.TranslateAPIURL)
+	sendMessageTgAd, err := adapters.NewTelegramAdapter(cfg.TelegramToken)
 
-	quote, err := quoteFetcher.FetchFormattedQuote()
 	if err != nil {
-		fmt.Println("Ошибка при получении цитаты:", err)
-		fmt.Printf("%+v\n", err)
+		logger.Info("Telegram adapter initialization failed")
+		return
 	}
-	fmt.Printf("%+v\n", quote)
 
-	// 3. Переводим цитату
-	trAdapter := adapters.NewTranslateAdapter(cfg.TranslateAPIURL)
-	translateFetcher := usecases.NewTranslateFetcher(trAdapter)
+	// 3. Usecases
+	quoteFetcherUseCase := usecases.NewQuoteFetcher(getQuoteAd)
+	translateFetcherUseCase := usecases.NewTranslateFetcher(translateQuoteAd)
+	telegramFetcherUseCase := usecases.NewTelegramFetcher(sendMessageTgAd)
 
-	translateQuote, err := translateFetcher.FetchTranslated(quote, "en", "ru")
-	if err != nil {
-		fmt.Println("Ошибка при переводе цитаты:", err)
-		fmt.Printf("%+v\n", err)
-	}
-	fmt.Printf("%+v\n", translateQuote)
+	// 4. Планировщик CRON
+	cronExpr := "0 */3 * * *" // Каждые 3 часа (в начале часа)
+	sheduler.InitScheduler(cronExpr, func() {
+		// 4.1 получаем цитату на англосаксонском
+		myQuote, errGetQuote := quoteFetcherUseCase.FetchFormattedQuote()
+		if errGetQuote != nil {
+			slog.Error("Ошибка при получении цитаты", slog.String("error", err.Error()))
+			return
+		}
+		// 4.2 переводим на великий могучий
+		mySlavicQuote, errTranslate := translateFetcherUseCase.FetchTranslated(myQuote, "en", "ru")
+		if errTranslate != nil {
+			slog.Error("Ошибка при переводе цитаты", slog.String("error", err.Error()))
+			return
+		}
 
-	// 4. Отправим данные в TelegramBot
-	tgAdapter, err := adapters.NewTelegramAdapter(cfg.TelegramToken)
-	if err != nil {
-		fmt.Printf("%+v\n", err)
-	}
-	tgFetcher := usecases.NewTelegramFetcher(tgAdapter)
+		// 4.3 форматируем строку
+		msg := usecases.FormatQuoteWithEmoji(mySlavicQuote.Text, mySlavicQuote.Author)
 
-	formatted := usecases.FormatQuoteWithEmoji(translateQuote.Text, translateQuote.Author)
-	sendMsgError := tgFetcher.FetchTelegram(cfg.TelegramChatId, formatted)
-	fmt.Printf("%+v\n", sendMsgError)
-
+		// 4.4 отправляем в tg
+		errSendMsg := telegramFetcherUseCase.FetchTelegram(cfg.TelegramChatId, msg)
+		if errSendMsg != nil {
+			slog.Error("Ошибка при отправке цитаты в telegram", slog.String("error", err.Error()))
+			return
+		} else {
+			slog.Info("Цитата успешно отправлена")
+		}
+	})
+	select {} // Блокируем main
 }
