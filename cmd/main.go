@@ -37,7 +37,7 @@ func app() {
 	telegramFetcherUseCase := usecases.NewTelegramFetcher(sendMessageTgAd)
 
 	// 4. Планировщик CRON
-	cronExpr := "0 */3 * * *" // Каждые 3 часа (в начале часа)
+	cronExpr := "* * * * *" // Каждую минуту
 	sheduler.InitScheduler(cronExpr, func() {
 		// 4.1 получаем цитату на англосаксонском
 		myQuote, errGetQuote := quoteFetcherUseCase.FetchFormattedQuote()
