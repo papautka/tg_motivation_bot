@@ -15,10 +15,12 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	// Попытаться загрузить .env файл, но не ругаться, если его нет
+	// (Например, в продакшене .env не будет — и это нормально)
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
 	}
+
 	tgChatId, _ := strconv.Atoi(os.Getenv("TELEGRAM_CHAT_ID"))
 	return &Config{
 		TelegramToken:   os.Getenv("TELEGRAM_TOKEN"),
