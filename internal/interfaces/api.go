@@ -38,6 +38,7 @@ type TelegramApi interface {
 
 	// Управление ботом
 	SetCommands(commands []tgbotapi.BotCommand) error
+	StartBotLoop(handler func(string, int64))
 	Stop()
 
 	// Утилиты

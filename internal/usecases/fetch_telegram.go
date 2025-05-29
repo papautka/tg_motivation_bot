@@ -19,6 +19,13 @@ func NewTelegramFetcher(p interfaces.TelegramApi) *TelegramFetcher {
 	}
 }
 
+// StartBotLoop запускает основной цикл обработки обновлений
+func (t *TelegramFetcher) StartBotLoopFetcher(handler func(string, int64)) {
+	updates := t.Provider.StartBotLoop
+	updates(handler)
+	slog.Info("Telegram bot started and listening for updates...")
+}
+
 // FetchTelegram отправляет сообщение с reply клавиатурой (для обратной совместимости)
 func (t *TelegramFetcher) FetchTelegram(chatId int64, msg string, keyboard *tgbotapi.ReplyKeyboardMarkup) error {
 	var err error
@@ -177,6 +184,7 @@ func (t *TelegramFetcher) GetChatMember(chatId, userId int64) (*tgbotapi.ChatMem
 
 // SetBotCommands устанавливает команды бота
 func (t *TelegramFetcher) SetBotCommands(commands []tgbotapi.BotCommand) error {
+	// 1. Устанавливаем команды для бота
 	err := t.Provider.SetCommands(commands)
 	if err != nil {
 		slog.Error("Error setting bot commands",

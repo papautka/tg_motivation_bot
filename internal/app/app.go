@@ -40,7 +40,7 @@ func App() {
 	telegramFetcherUseCase := usecases.NewTelegramFetcher(sendMessageTgAd)
 
 	// 4. Запускаем бот
-	go startTelegramBotLoop(sendMessageTgAd, telegramFetcherUseCase, quoteFetcherUseCase, translateFetcherUseCase)
+	go startTelegramBotLoop(telegramFetcherUseCase, quoteFetcherUseCase, translateFetcherUseCase)
 
 	slog.Info("Bot started successfully")
 

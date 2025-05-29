@@ -251,14 +251,16 @@ func (t *TelegramAdapter) GetChatMember(chatID int64, userID int64) (*tgbotapi.C
 
 // SetCommands устанавливает команды бота
 func (t *TelegramAdapter) SetCommands(commands []tgbotapi.BotCommand) error {
+	// 1. Этот config описывает запрос Telegram API для установки списка команд бота.
 	config := tgbotapi.NewSetMyCommands(commands...)
+	// 2. Отправляется запрос к Telegram API через t.bot.Request(config)
 	_, err := t.bot.Request(config)
 	if err != nil {
 		slog.Error("Failed to set bot commands", slog.String("error", err.Error()))
 		return fmt.Errorf("failed to set bot commands: %w", err)
 	}
 
-	slog.Info("Bot commands set successfully", slog.Int("count", len(commands)))
+	slog.Info("Успешно установили команды для ботов", slog.Int("кол-во", len(commands)))
 	return nil
 }
 

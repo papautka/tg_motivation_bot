@@ -3,14 +3,12 @@ package app
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log/slog"
-	"tg_motivation_bot/internal/adapters"
 	"tg_motivation_bot/internal/usecases"
 )
 
 // startTelegramBotLoop запускает цикл обработки сообщений
 func startTelegramBotLoop(
-	bot *adapters.TelegramAdapter,
-	tgFetcher *usecases.TelegramFetcher,
+	tgf *usecases.TelegramFetcher,
 	quoteFetcher *usecases.QuoteFetcher,
 	translateFetcher *usecases.TranslateFetcher,
 ) {
@@ -20,14 +18,12 @@ func startTelegramBotLoop(
 		{Command: "help", Description: "Помощь"},
 		{Command: "quote", Description: "Получить цитату"},
 	}
-
-	if err := bot.SetCommands(commands); err != nil {
-		slog.Error("Failed to set bot commands", slog.String("error", err.Error()))
+	if err := tgf.SetBotCommands(commands); err != nil {
+		slog.Error("Не удалось установить команды для бота", slog.String("error", err.Error()))
 	}
-
 	// Запускаем обработчик сообщений
-	bot.StartBotLoop(func(command string, chatId int64) {
-		handleBotCommand(command, chatId, bot, quoteFetcher, translateFetcher)
+	tgf.StartBotLoopFetcher(func(command string, chatId int64) {
+		handleBotCommand(command, chatId, tgf, quoteFetcher, translateFetcher)
 	})
 }
 
@@ -35,7 +31,7 @@ func startTelegramBotLoop(
 func handleBotCommand(
 	command string,
 	chatId int64,
-	bot *adapters.TelegramAdapter,
+	tgf *usecases.TelegramFetcher,
 	quoteFetcher *usecases.QuoteFetcher,
 	translateFetcher *usecases.TranslateFetcher,
 ) {
@@ -45,40 +41,39 @@ func handleBotCommand(
 	)
 
 	// Отправляем индикатор "печатает..."
-	if err := bot.SendTypingAction(chatId); err != nil {
-		slog.Warn("Failed to send typing action", slog.String("error", err.Error()))
+	if err := tgf.SendTypingIndicator(chatId); err != nil {
+		slog.Warn("Не удалось отправить индикатор печатает...", slog.String("error", err.Error()))
 	}
 
 	switch command {
 	case "/start":
-		handleStartCommand(chatId, bot)
+		handleStartCommand(chatId, tgf)
 	case "/help":
-		handleHelpCommand(chatId, bot)
+		handleHelpCommand(chatId, tgf)
 	case "/quote":
 		// Показываем меню выбора языка
-		bot.SendMessageWithDefaultInlineKeyboard(chatId, "Выберите язык для цитаты:")
+		tgf.SendMessageWithDefaultKeyboard(chatId, "Выберите язык для цитаты:")
 	case "ru":
-		handleRussianQuote(chatId, bot, quoteFetcher, translateFetcher)
+		handleRussianQuote(chatId, tgf, quoteFetcher, translateFetcher)
 	case "en":
-		handleEnglishQuote(chatId, bot, quoteFetcher)
+		handleEnglishQuote(chatId, tgf, quoteFetcher)
 	default:
-		handleUnknownCommand(chatId, bot, command)
+		handleUnknownCommand(chatId, tgf, command)
 	}
 }
 
 // handleStartCommand обрабатывает команду /start
-func handleStartCommand(chatId int64, bot *adapters.TelegramAdapter) {
+func handleStartCommand(chatId int64, tfg *usecases.TelegramFetcher) {
 	welcomeText := `🎯 Добро пожаловать в Quote Bot!
 
 Этот бот поможет вам получить вдохновляющие цитаты на русском или английском языке.
 
 Выберите язык для получения цитаты:`
-
-	bot.SendMessageWithDefaultInlineKeyboard(chatId, welcomeText)
+	tfg.SendMessageWithDefaultKeyboard(chatId, welcomeText)
 }
 
 // handleHelpCommand обрабатывает команду /help
-func handleHelpCommand(chatId int64, bot *adapters.TelegramAdapter) {
+func handleHelpCommand(chatId int64, tfg *usecases.TelegramFetcher) {
 	helpText := `ℹ️ Помощь по использованию бота:
 
 🔹 /start - начать работу с ботом
@@ -87,13 +82,13 @@ func handleHelpCommand(chatId int64, bot *adapters.TelegramAdapter) {
 
 Просто нажимайте на кнопки для выбора языка цитаты!`
 
-	bot.SendMessageWithDefaultInlineKeyboard(chatId, helpText)
+	tfg.SendMessageWithDefaultKeyboard(chatId, helpText)
 }
 
 // handleRussianQuote обрабатывает запрос цитаты на русском языке
 func handleRussianQuote(
 	chatId int64,
-	bot *adapters.TelegramAdapter,
+	tgf *usecases.TelegramFetcher,
 	quoteFetcher *usecases.QuoteFetcher,
 	translateFetcher *usecases.TranslateFetcher,
 ) {
@@ -104,7 +99,7 @@ func handleRussianQuote(
 			slog.String("error", err.Error()),
 			slog.Int64("chatId", chatId),
 		)
-		bot.SendMessageWithDefaultInlineKeyboard(chatId, "❌ Ошибка при получении цитаты. Попробуйте еще раз.")
+		tgf.SendMessageWithDefaultKeyboard(chatId, "❌ Ошибка при получении цитаты. Попробуйте еще раз.")
 		return
 	}
 
@@ -115,13 +110,13 @@ func handleRussianQuote(
 			slog.String("error", err.Error()),
 			slog.Int64("chatId", chatId),
 		)
-		bot.SendMessageWithDefaultInlineKeyboard(chatId, "❌ Ошибка при переводе цитаты. Попробуйте еще раз.")
+		tgf.SendMessageWithDefaultKeyboard(chatId, "❌ Ошибка при переводе цитаты. Попробуйте еще раз.")
 		return
 	}
 
 	// Форматируем и отправляем
 	formattedQuote := usecases.FormatQuoteWithEmoji(translated.Text, translated.Author)
-	bot.SendMessageWithDefaultInlineKeyboard(chatId, formattedQuote)
+	tgf.SendMessageWithDefaultKeyboard(chatId, formattedQuote)
 
 	slog.Info("Russian quote sent successfully", slog.Int64("chatId", chatId))
 }
@@ -129,7 +124,7 @@ func handleRussianQuote(
 // handleEnglishQuote обрабатывает запрос цитаты на английском языке
 func handleEnglishQuote(
 	chatId int64,
-	bot *adapters.TelegramAdapter,
+	tgf *usecases.TelegramFetcher,
 	quoteFetcher *usecases.QuoteFetcher,
 ) {
 	// Получаем цитату
@@ -139,22 +134,22 @@ func handleEnglishQuote(
 			slog.String("error", err.Error()),
 			slog.Int64("chatId", chatId),
 		)
-		bot.SendMessageWithDefaultInlineKeyboard(chatId, "❌ Error fetching quote. Please try again.")
+		tgf.SendMessageWithDefaultKeyboard(chatId, "❌ Error fetching quote. Please try again.")
 		return
 	}
 
 	// Форматируем и отправляем
 	formattedQuote := usecases.FormatQuoteWithEmoji(quote.Text, quote.Author)
-	bot.SendMessageWithDefaultInlineKeyboard(chatId, formattedQuote)
+	tgf.SendMessageWithDefaultKeyboard(chatId, formattedQuote)
 
 	slog.Info("English quote sent successfully", slog.Int64("chatId", chatId))
 }
 
 // handleUnknownCommand обрабатывает неизвестные команды
-func handleUnknownCommand(chatId int64, bot *adapters.TelegramAdapter, command string) {
+func handleUnknownCommand(chatId int64, tgf *usecases.TelegramFetcher, command string) {
 	unknownText := `❓ Неизвестная команда: ` + command + `Используйте /help для получения списка доступных команд. Или выберите действие:`
 
-	bot.SendMessageWithDefaultInlineKeyboard(chatId, unknownText)
+	tgf.SendMessageWithDefaultKeyboard(chatId, unknownText)
 
 	slog.Info("Unknown command received",
 		slog.String("command", command),
